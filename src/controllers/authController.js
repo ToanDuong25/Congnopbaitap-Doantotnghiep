@@ -57,7 +57,7 @@ exports.login = async (req, res) => {
     return res.redirect(returnTo);
   } catch (err) {
     console.error('Lỗi đăng nhập:', err);
-    req.flash('error_msg', 'Đã xảy ra lỗi hệ thống khi kết nối cơ sở dữ liệu. Vui lòng thử lại sau.');
+    req.flash('error_msg', 'Lỗi kết nối CSDL: ' + err.message);
     return res.redirect('/auth/login');
   }
 };
@@ -137,7 +137,7 @@ exports.register = async (req, res) => {
     return res.redirect('/auth/login');
   } catch (err) {
     console.error('Lỗi đăng ký:', err);
-    req.flash('error_msg', 'Đã xảy ra lỗi khi tạo tài khoản. Vui lòng thử lại.');
+    req.flash('error_msg', 'Lỗi CSDL khi tạo tài khoản: ' + err.message);
     return res.redirect('/auth/register');
   }
 };
