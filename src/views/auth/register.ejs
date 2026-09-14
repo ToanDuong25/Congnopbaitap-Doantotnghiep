@@ -1,0 +1,106 @@
+<%- include('../layouts/header') %>
+<%- include('../layouts/navbar') %>
+
+<main class="container my-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+      <div class="card shadow-sm">
+        <div class="card-body p-4 p-md-5">
+          <div class="text-center mb-4">
+            <div class="d-inline-flex p-3 rounded-circle bg-success bg-opacity-10 text-success mb-3">
+              <i class="bi bi-person-plus-fill fs-2"></i>
+            </div>
+            <h3 class="fw-bold">Đăng Ký Tài Khoản</h3>
+            <p class="text-muted small">Tạo tài khoản Giảng viên hoặc Sinh viên để tham gia</p>
+          </div>
+
+          <%- include('../layouts/alerts') %>
+
+          <form action="/auth/register" method="POST">
+            <!-- Vai trò người dùng -->
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Bạn là: <span class="text-danger">*</span></label>
+              <div class="row g-2">
+                <div class="col-6">
+                  <input type="radio" class="btn-check" name="role" id="role_student" value="student" checked autocomplete="off">
+                  <label class="btn btn-outline-primary w-100 py-2 d-flex flex-column align-items-center" for="role_student">
+                    <i class="bi bi-mortarboard fs-4 mb-1"></i>
+                    <span class="fw-bold">Sinh Viên</span>
+                  </label>
+                </div>
+                <div class="col-6">
+                  <input type="radio" class="btn-check" name="role" id="role_teacher" value="teacher" autocomplete="off">
+                  <label class="btn btn-outline-warning text-dark w-100 py-2 d-flex flex-column align-items-center" for="role_teacher">
+                    <i class="bi bi-person-workspace fs-4 mb-1"></i>
+                    <span class="fw-bold">Giảng Viên</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="user_code" class="form-label fw-semibold" id="code_label">Mã số Sinh viên (MSSV) <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="user_code" name="user_code" placeholder="VD: B21DCCN001" required>
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label for="full_name" class="form-label fw-semibold">Họ và Tên <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="full_name" name="full_name" placeholder="VD: Nguyễn Văn A" required>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="email" class="form-label fw-semibold">Địa chỉ Email <span class="text-danger">*</span></label>
+                <input type="email" class="form-control" id="email" name="email" placeholder="VD: student@school.edu.vn" required>
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label for="department" class="form-label fw-semibold">Lớp / Khoa</label>
+                <input type="text" class="form-control" id="department" name="department" placeholder="VD: D21CQCN01 hoặc CNTT">
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="password" class="form-label fw-semibold">Mật khẩu <span class="text-danger">*</span></label>
+                <input type="password" class="form-control" id="password" name="password" minlength="6" placeholder="Tối thiểu 6 ký tự" required>
+              </div>
+
+              <div class="col-md-6 mb-4">
+                <label for="confirm_password" class="form-label fw-semibold">Xác nhận mật khẩu <span class="text-danger">*</span></label>
+                <input type="password" class="form-control" id="confirm_password" name="confirm_password" minlength="6" placeholder="Nhập lại mật khẩu" required>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">
+              <i class="bi bi-check2-circle me-1"></i> Hoàn Tất Đăng Ký
+            </button>
+          </form>
+
+          <hr class="my-4">
+
+          <div class="text-center">
+            <span class="text-muted small">Đã có tài khoản? </span>
+            <a href="/auth/login" class="fw-semibold text-decoration-none">Đăng nhập tại đây</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  // Đổi nhãn mã số tùy theo vai trò
+  document.getElementById('role_student').addEventListener('change', () => {
+    document.getElementById('code_label').innerHTML = 'Mã số Sinh viên (MSSV) <span class="text-danger">*</span>';
+    document.getElementById('user_code').placeholder = 'VD: B21DCCN001';
+  });
+  document.getElementById('role_teacher').addEventListener('change', () => {
+    document.getElementById('code_label').innerHTML = 'Mã Giảng viên <span class="text-danger">*</span>';
+    document.getElementById('user_code').placeholder = 'VD: GV001';
+  });
+</script>
+
+<%- include('../layouts/footer') %>

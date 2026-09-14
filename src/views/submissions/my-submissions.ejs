@@ -1,0 +1,110 @@
+<%- include('../layouts/header') %>
+<%- include('../layouts/navbar') %>
+
+<main class="container my-4">
+  <%- include('../layouts/alerts') %>
+
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="fw-bold mb-1">Lịch Sử Nộp Bài Của Tôi</h2>
+      <p class="text-muted mb-0">Theo dõi trạng thái các bài tập môn học và đồ án tốt nghiệp bạn đã nộp</p>
+    </div>
+    <a href="/assignments" class="btn btn-primary">
+      <i class="bi bi-search me-1"></i> Tìm bài tập cần nộp
+    </a>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body p-0">
+      <% if (submissions.length === 0) { %>
+        <div class="p-5 text-center text-muted">
+          <i class="bi bi-folder-x fs-1 d-block mb-3 text-secondary"></i>
+          <h5>Bạn chưa nộp bài tập hoặc đồ án nào</h5>
+          <p class="text-muted">Hãy xem danh sách bài tập đang mở để tiến hành nộp bài.</p>
+          <a href="/assignments" class="btn btn-primary mt-2">Xem danh sách bài tập</a>
+        </div>
+      <% } else { %>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Tiêu đề Bài tập / Đồ án</th>
+                <th>Giảng viên</th>
+                <th>Thời điểm nộp</th>
+                <th>File đã nộp</th>
+                <th>Trạng thái</th>
+                <th>Điểm số</th>
+                <th>Nhận xét của GV</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% submissions.forEach(sub => { %>
+                <tr>
+                  <td>
+                    <a href="/assignments/<%= sub.assignment_id %>" class="fw-bold text-decoration-none text-dark">
+                      <%= sub.assignment_title %>
+                    </a>
+                    <div>
+                      <% if (sub.assignment_type === 'graduation_thesis') { %>
+                        <span class="badge badge-thesis">Đồ án tốt nghiệp</span>
+                      <% } else { %>
+                        <span class="badge badge-assignment">Bài tập</span>
+                      <% } %>
+                    </div>
+                  </td>
+                  <td>
+                    <small class="text-muted"><%= sub.teacher_name %></small>
+                  </td>
+                  <td>
+                    <div><%= moment(sub.submitted_at).format('DD/MM/YYYY HH:mm') %></div>
+                    <% if (sub.is_late) { %>
+                      <span class="badge bg-danger">Nộp trễ</span>
+                    <% } else { %>
+                      <span class="badge bg-success">Đúng hạn</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <a href="/submissions/<%= sub.id %>/download" class="btn btn-sm btn-outline-secondary" title="Tải lại file">
+                      <i class="bi bi-download me-1"></i> Tải về
+                    </a>
+                  </td>
+                  <td>
+                    <% if (sub.status === 'graded') { %>
+                      <span class="badge bg-success">Đã có điểm</span>
+                    <% } else { %>
+                      <span class="badge bg-warning text-dark">Chờ chấm</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (sub.status === 'graded') { %>
+                      <span class="fs-5 fw-bold text-success"><%= sub.score %> <small class="text-muted fs-6">/ <%= sub.assignment_max_score %></small></span>
+                    <% } else { %>
+                      <span class="text-muted">--</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (sub.feedback) { %>
+                      <span class="small text-secondary fst-italic text-truncate d-inline-block" style="max-width: 180px;" title="<%= sub.feedback %>">
+                        <%= sub.feedback %>
+                      </span>
+                    <% } else { %>
+                      <span class="text-muted small">Chưa có nhận xét</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <a href="/assignments/<%= sub.assignment_id %>" class="btn btn-sm btn-outline-primary">
+                      Chi tiết
+                    </a>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</main>
+
+<%- include('../layouts/footer') %>

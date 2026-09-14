@@ -1,0 +1,100 @@
+<%- include('../layouts/header') %>
+<%- include('../layouts/navbar') %>
+
+<main class="container my-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <a href="/assignments/<%= assignment.id %>" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-arrow-left me-1"></i> Quay lại
+        </a>
+      </div>
+
+      <div class="card shadow-sm">
+        <div class="card-header bg-white py-3">
+          <h4 class="fw-bold mb-0 text-primary">
+            <i class="bi bi-pencil-square me-2"></i>Chỉnh Sửa Bài Tập / Đồ Án
+          </h4>
+        </div>
+        <div class="card-body p-4">
+          <%- include('../layouts/alerts') %>
+
+          <form action="/assignments/<%= assignment.id %>/edit" method="POST" enctype="multipart/form-data">
+            <!-- Loại đề tài / bài tập -->
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Loại hình: <span class="text-danger">*</span></label>
+              <div class="d-flex gap-4">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="type" id="type_assignment" value="assignment" <%= assignment.type === 'assignment' ? 'checked' : '' %>>
+                  <label class="form-check-label fw-semibold" for="type_assignment">
+                    <i class="bi bi-journal-code text-primary me-1"></i> Bài tập môn học
+                  </label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="type" id="type_thesis" value="graduation_thesis" <%= assignment.type === 'graduation_thesis' ? 'checked' : '' %>>
+                  <label class="form-check-label fw-semibold" for="type_thesis">
+                    <i class="bi bi-mortarboard-fill text-warning me-1"></i> Đồ án tốt nghiệp
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tiêu đề -->
+            <div class="mb-3">
+              <label for="title" class="form-label fw-semibold">Tiêu đề bài tập / Tên đề tài đồ án <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="title" name="title" value="<%= assignment.title %>" required>
+            </div>
+
+            <!-- Thời hạn nộp & Thang điểm -->
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="due_date" class="form-label fw-semibold">Hạn chót nộp bài (Deadline) <span class="text-danger">*</span></label>
+                <input type="datetime-local" class="form-control" id="due_date" name="due_date" value="<%= moment(assignment.due_date).format('YYYY-MM-DDTHH:mm') %>" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="max_score" class="form-label fw-semibold">Thang điểm tối đa</label>
+                <input type="number" class="form-control" id="max_score" name="max_score" value="<%= assignment.max_score %>" step="0.5" min="1" max="100">
+              </div>
+            </div>
+
+            <!-- Mô tả chi tiết -->
+            <div class="mb-3">
+              <label for="description" class="form-label fw-semibold">Mô tả yêu cầu chi tiết</label>
+              <textarea class="form-control" id="description" name="description" rows="6"><%= assignment.description %></textarea>
+            </div>
+
+            <!-- Đính kèm tài liệu đề bài -->
+            <div class="mb-4">
+              <label class="form-label fw-semibold">Tài liệu đề bài đính kèm</label>
+              <% if (assignment.attachment_path) { %>
+                <div class="mb-2 p-2 bg-light rounded d-flex align-items-center justify-content-between">
+                  <div>
+                    <i class="bi bi-file-earmark-arrow-down me-1 text-primary"></i>
+                    <span><%= assignment.attachment_name %></span>
+                  </div>
+                  <a href="<%= assignment.attachment_path %>" download class="btn btn-sm btn-outline-primary">Tải file hiện tại</a>
+                </div>
+              <% } %>
+              <div class="dropzone-box" onclick="document.getElementById('attachment').click();">
+                <i class="bi bi-cloud-arrow-up display-5 text-primary d-block mb-2"></i>
+                <div class="fw-semibold">Nhấn vào đây để tải file mới thay thế (tùy chọn)</div>
+                <div class="text-muted small">Hỗ trợ .pdf, .docx, .zip, .rar... Tối đa 50MB</div>
+                <input type="file" id="attachment" name="attachment" class="d-none">
+                <div id="attachment_name" class="mt-2 text-success fw-semibold d-none"></div>
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+              <a href="/assignments/<%= assignment.id %>" class="btn btn-light px-4">Hủy bỏ</a>
+              <button type="submit" class="btn btn-primary px-4 fw-semibold">
+                <i class="bi bi-save me-1"></i> Lưu Thay Đổi
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<%- include('../layouts/footer') %>

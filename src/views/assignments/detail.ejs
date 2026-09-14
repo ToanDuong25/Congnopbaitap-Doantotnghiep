@@ -1,0 +1,323 @@
+<%- include('../layouts/header') %>
+<%- include('../layouts/navbar') %>
+
+<main class="container my-4">
+  <%- include('../layouts/alerts') %>
+
+  <!-- Breadcrumb & Back button -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <a href="/assignments" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i> Quay lại danh sách
+    </a>
+    <% if ((user.role === 'teacher' && assignment.teacher_id === user.id) || user.role === 'admin') { %>
+      <div class="d-flex gap-2">
+        <a href="/assignments/<%= assignment.id %>/edit" class="btn btn-outline-primary btn-sm">
+          <i class="bi bi-pencil me-1"></i> Chỉnh sửa
+        </a>
+        <form action="/assignments/<%= assignment.id %>/delete" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn xóa bài tập/đồ án này? Toàn bộ bài nộp liên quan cũng sẽ bị xóa!')">
+          <button type="submit" class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-trash me-1"></i> Xóa
+          </button>
+        </form>
+      </div>
+    <% } %>
+  </div>
+
+  <div class="row g-4">
+    <!-- Cột trái: Thông tin chi tiết đề bài -->
+    <div class="col-lg-8">
+      <div class="card shadow-sm mb-4">
+        <div class="card-body p-4">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+              <% if (assignment.type === 'graduation_thesis') { %>
+                <span class="badge badge-thesis mb-2 fs-6">
+                  <i class="bi bi-mortarboard-fill me-1"></i> Đề tài Đồ án tốt nghiệp
+                </span>
+              <% } else { %>
+                <span class="badge badge-assignment mb-2 fs-6">
+                  <i class="bi bi-journal-code me-1"></i> Bài tập môn học
+                </span>
+              <% } %>
+              <h3 class="fw-bold mb-1"><%= assignment.title %></h3>
+            </div>
+            <% if (isExpired) { %>
+              <span class="badge bg-danger fs-6">Đã hết hạn nộp</span>
+            <% } else { %>
+              <span class="badge bg-success fs-6">Đang mở nộp</span>
+            <% } %>
+          </div>
+
+          <div class="row g-3 py-3 border-top border-bottom bg-light rounded px-2 my-3">
+            <div class="col-sm-6 col-md-4">
+              <span class="text-muted small d-block">Giảng viên phụ trách:</span>
+              <strong class="text-dark"><i class="bi bi-person-badge me-1"></i> <%= assignment.teacher_name %></strong>
+              <div class="small text-muted"><%= assignment.teacher_department || '' %></div>
+            </div>
+            <div class="col-sm-6 col-md-4">
+              <span class="text-muted small d-block">Hạn chót nộp bài:</span>
+              <strong class="<%= isExpired ? 'text-danger' : 'text-primary' %>">
+                <i class="bi bi-alarm me-1"></i> <%= moment(assignment.due_date).format('DD/MM/YYYY HH:mm') %>
+              </strong>
+              <div class="small text-muted">(<%= moment(assignment.due_date).fromNow() %>)</div>
+            </div>
+            <div class="col-sm-6 col-md-4">
+              <span class="text-muted small d-block">Thang điểm tối đa:</span>
+              <strong class="text-dark"><i class="bi bi-trophy me-1"></i> <%= assignment.max_score %> điểm</strong>
+            </div>
+          </div>
+
+          <!-- Nội dung mô tả -->
+          <h5 class="fw-bold mt-4 mb-2">Yêu cầu & Hướng dẫn:</h5>
+          <div class="p-3 bg-white border rounded text-secondary" style="white-space: pre-line; line-height: 1.6;">
+            <%= assignment.description || 'Không có mô tả chi tiết từ giảng viên.' %>
+          </div>
+
+          <!-- Tài liệu đính kèm -->
+          <% if (assignment.attachment_path) { %>
+            <div class="mt-4 p-3 bg-primary bg-opacity-10 rounded border border-primary border-opacity-25 d-flex justify-content-between align-items-center">
+              <div>
+                <i class="bi bi-file-earmark-arrow-down-fill text-primary fs-3 me-2"></i>
+                <span class="fw-bold text-primary">Tài liệu hướng dẫn đính kèm:</span>
+                <span class="d-block small text-muted"><%= assignment.attachment_name %></span>
+              </div>
+              <a href="<%= assignment.attachment_path %>" download class="btn btn-primary btn-sm">
+                <i class="bi bi-download me-1"></i> Tải về đề bài
+              </a>
+            </div>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- PHẦN DÀNH CHO GIẢNG VIÊN: Danh sách các bài nộp của sinh viên -->
+      <% if (user.role === 'teacher' || user.role === 'admin') { %>
+        <div class="card shadow-sm">
+          <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="fw-bold mb-0 text-dark">
+              <i class="bi bi-people-fill text-primary me-2"></i>Danh Sách Sinh Viên Đã Nộp Bài (<%= submissions.length %>)
+            </h5>
+          </div>
+          <div class="card-body p-0">
+            <% if (submissions.length === 0) { %>
+              <div class="p-5 text-center text-muted">
+                <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
+                Chưa có sinh viên nào nộp bài cho đề tài này.
+              </div>
+            <% } else { %>
+              <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Sinh viên</th>
+                      <th>Thời gian nộp</th>
+                      <th>File bài làm</th>
+                      <th>Điểm & Nhận xét</th>
+                      <th>Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% submissions.forEach(sub => { %>
+                      <tr>
+                        <td>
+                          <div class="fw-bold"><%= sub.student_name %></div>
+                          <div class="small text-muted">MSSV: <%= sub.student_code %> | <%= sub.student_class || 'Lớp' %></div>
+                        </td>
+                        <td>
+                          <div><%= moment(sub.submitted_at).format('DD/MM/YYYY HH:mm') %></div>
+                          <% if (sub.is_late) { %>
+                            <span class="badge bg-danger">Nộp muộn</span>
+                          <% } else { %>
+                            <span class="badge bg-success">Đúng hạn</span>
+                          <% } %>
+                        </td>
+                        <td>
+                          <a href="/submissions/<%= sub.id %>/download" class="btn btn-sm btn-outline-secondary" title="Tải về file bài làm">
+                            <i class="bi bi-download me-1"></i> <%= sub.original_filename %>
+                          </a>
+                          <% if (sub.note) { %>
+                            <div class="small text-muted mt-1 fst-italic">
+                              Ghi chú: "<%= sub.note %>"
+                            </div>
+                          <% } %>
+                        </td>
+                        <td>
+                          <% if (sub.status === 'graded') { %>
+                            <div class="fw-bold text-success fs-6"><%= sub.score %> / <%= assignment.max_score %> đ</div>
+                            <% if (sub.feedback) { %>
+                              <small class="text-muted text-truncate d-inline-block" style="max-width: 160px;" title="<%= sub.feedback %>">
+                                <%= sub.feedback %>
+                              </small>
+                            <% } %>
+                          <% } else { %>
+                            <span class="badge bg-warning text-dark">Chưa chấm</span>
+                          <% } %>
+                        </td>
+                        <td>
+                          <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#gradeModal_<%= sub.id %>">
+                            <i class="bi bi-pencil-square me-1"></i> <%= sub.status === 'graded' ? 'Sửa điểm' : 'Chấm điểm' %>
+                          </button>
+
+                          <!-- Modal Chấm Điểm -->
+                          <div class="modal fade" id="gradeModal_<%= sub.id %>" tabindex="-1" aria-labelledby="gradeModalLabel_<%= sub.id %>" aria-hidden="true">
+                            <div class="modal-dialog">
+                              <div class="modal-content">
+                                <form action="/submissions/<%= sub.id %>/grade" method="POST">
+                                  <input type="hidden" name="assignment_id" value="<%= assignment.id %>">
+                                  <div class="modal-header">
+                                    <h5 class="modal-title fw-bold" id="gradeModalLabel_<%= sub.id %>">
+                                      Chấm Điểm: <%= sub.student_name %> (<%= sub.student_code %>)
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                  </div>
+                                  <div class="modal-body">
+                                    <div class="mb-3">
+                                      <label class="form-label fw-semibold">Điểm số (Thang 10): <span class="text-danger">*</span></label>
+                                      <input type="number" step="0.1" min="0" max="10" name="score" class="form-control" value="<%= sub.score !== null ? sub.score : '' %>" required placeholder="Nhập điểm từ 0 - 10">
+                                    </div>
+                                    <div class="mb-3">
+                                      <label class="form-label fw-semibold">Nhận xét / Đánh giá của Giảng viên:</label>
+                                      <textarea name="feedback" rows="4" class="form-control" placeholder="Góp ý cho sinh viên, chỉ ra các điểm làm tốt hoặc thiếu sót..."><%= sub.feedback || '' %></textarea>
+                                    </div>
+                                  </div>
+                                  <div class="modal-footer">
+                                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Đóng</button>
+                                    <button type="submit" class="btn btn-success fw-semibold">
+                                      <i class="bi bi-check2-circle me-1"></i> Lưu Kết Quả Chấm
+                                    </button>
+                                  </div>
+                                </form>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    <% }) %>
+                  </tbody>
+                </table>
+              </div>
+            <% } %>
+          </div>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- Cột phải: KHU VỰC NỘP BÀI DÀNH CHO SINH VIÊN -->
+    <div class="col-lg-4">
+      <% if (user.role === 'student') { %>
+        <div class="card shadow-sm mb-4">
+          <div class="card-header bg-white py-3">
+            <h5 class="fw-bold mb-0 text-primary">
+              <i class="bi bi-cloud-arrow-up-fill me-2"></i>Khu Vực Nộp Bài
+            </h5>
+          </div>
+          <div class="card-body p-4">
+            <% if (mySubmission) { %>
+              <!-- ĐÃ NỘP BÀI -->
+              <div class="alert alert-success d-flex align-items-center mb-3">
+                <i class="bi bi-check-circle-fill fs-3 me-2 text-success"></i>
+                <div>
+                  <div class="fw-bold">Bạn đã nộp bài!</div>
+                  <small class="text-muted"><%= moment(mySubmission.submitted_at).format('DD/MM/YYYY HH:mm') %></small>
+                </div>
+              </div>
+
+              <% if (mySubmission.is_late) { %>
+                <div class="badge bg-danger mb-3 d-inline-block">Nộp sau thời hạn (Trễ hạn)</div>
+              <% } %>
+
+              <div class="card bg-light border-0 p-3 mb-3">
+                <div class="small text-muted mb-1">File đã tải lên:</div>
+                <div class="fw-bold text-truncate mb-2"><%= mySubmission.original_filename %></div>
+                <a href="/submissions/<%= mySubmission.id %>/download" class="btn btn-sm btn-outline-primary w-100">
+                  <i class="bi bi-download me-1"></i> Tải lại bài nộp của bạn
+                </a>
+              </div>
+
+              <% if (mySubmission.note) { %>
+                <div class="small text-muted mb-3">
+                  <strong>Ghi chú gửi giảng viên:</strong>
+                  <p class="fst-italic mb-0"><%= mySubmission.note %></p>
+                </div>
+              <% } %>
+
+              <!-- Kết quả chấm điểm nếu có -->
+              <% if (mySubmission.status === 'graded') { %>
+                <div class="card border-success p-3 mb-3 bg-success bg-opacity-10">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="fw-bold text-success">Kết Quả Đánh Giá:</span>
+                    <span class="fs-4 fw-bold text-success"><%= mySubmission.score %> / <%= assignment.max_score %></span>
+                  </div>
+                  <% if (mySubmission.feedback) { %>
+                    <div class="small text-dark">
+                      <strong>Nhận xét:</strong> <%= mySubmission.feedback %>
+                    </div>
+                  <% } %>
+                </div>
+              <% } else { %>
+                <div class="badge bg-info text-dark p-2 w-100 mb-3 text-center">
+                  <i class="bi bi-hourglass-split me-1"></i> Bài đang chờ giảng viên chấm điểm
+                </div>
+              <% } %>
+
+              <!-- Nộp lại bài -->
+              <hr>
+              <h6 class="fw-bold mb-2">Nộp lại bài làm (Cập nhật):</h6>
+            <% } %>
+
+            <!-- FORM NỘP BÀI -->
+            <form action="/submissions/assignment/<%= assignment.id %>" method="POST" enctype="multipart/form-data">
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Chọn file bài nộp: <span class="text-danger">*</span></label>
+                <div class="dropzone-box py-3" onclick="document.getElementById('submission_file').click();">
+                  <i class="bi bi-file-earmark-zip display-5 text-primary d-block mb-1"></i>
+                  <div class="fw-semibold small">Nhấn để chọn file nộp bài</div>
+                  <div class="text-muted" style="font-size: 0.75rem;">Hỗ trợ: .zip, .rar, .pdf, .docx (Max 100MB)</div>
+                  <input type="file" id="submission_file" name="submission_file" class="d-none" required>
+                  <div id="submission_file_name" class="mt-2 text-success fw-semibold small d-none"></div>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label for="note" class="form-label fw-semibold">Ghi chú gửi giảng viên (tùy chọn):</label>
+                <textarea name="note" id="note" class="form-control" rows="2" placeholder="VD: Em gửi thầy báo cáo và link github..."></textarea>
+              </div>
+
+              <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">
+                <i class="bi bi-send-fill me-1"></i> <%= mySubmission ? 'Cập Nhật Nộp Lại' : 'Xác Nhận Nộp Bài' %>
+              </button>
+            </form>
+          </div>
+        </div>
+      <% } else { %>
+        <!-- Thông tin tóm tắt cho giảng viên -->
+        <div class="card shadow-sm mb-4">
+          <div class="card-header bg-white py-3">
+            <h5 class="fw-bold mb-0 text-primary">
+              <i class="bi bi-bar-chart-fill me-2"></i>Tổng Quan Đề Bài
+            </h5>
+          </div>
+          <div class="card-body">
+            <div class="d-flex justify-content-between py-2 border-bottom">
+              <span class="text-muted">Tổng số bài nộp:</span>
+              <strong class="text-primary"><%= submissions.length %></strong>
+            </div>
+            <div class="d-flex justify-content-between py-2 border-bottom">
+              <span class="text-muted">Đã chấm điểm:</span>
+              <strong class="text-success"><%= submissions.filter(s => s.status === 'graded').length %></strong>
+            </div>
+            <div class="d-flex justify-content-between py-2 border-bottom">
+              <span class="text-muted">Chờ chấm:</span>
+              <strong class="text-warning"><%= submissions.filter(s => s.status === 'submitted').length %></strong>
+            </div>
+            <div class="d-flex justify-content-between py-2">
+              <span class="text-muted">Nộp trễ hạn:</span>
+              <strong class="text-danger"><%= submissions.filter(s => s.is_late).length %></strong>
+            </div>
+          </div>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</main>
+
+<%- include('../layouts/footer') %>

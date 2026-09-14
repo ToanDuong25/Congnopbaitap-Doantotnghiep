@@ -1,0 +1,187 @@
+<%- include('../layouts/header') %>
+<%- include('../layouts/navbar') %>
+
+<main class="container my-4">
+  <%- include('../layouts/alerts') %>
+
+  <!-- Header Giảng viên -->
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+    <div>
+      <h2 class="fw-bold mb-1">Bảng Điều Khiển Giảng Viên</h2>
+      <p class="text-muted mb-0">Xin chào thầy/cô <strong><%= user.full_name %></strong> (<%= user.user_code %> - <%= user.department || 'Khoa' %>)</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="/assignments/create?type=assignment" class="btn btn-primary">
+        <i class="bi bi-journal-plus me-1"></i> Giao Bài Tập
+      </a>
+      <a href="/assignments/create?type=graduation_thesis" class="btn btn-warning text-dark fw-semibold">
+        <i class="bi bi-mortarboard me-1"></i> Tạo Đề Tài Đồ Án
+      </a>
+    </div>
+  </div>
+
+  <!-- Thống kê KPI -->
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6 col-lg-3">
+      <div class="card stat-card">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <div class="text-muted small fw-semibold">TỔNG BÀI TẬP ĐÃ TẠO</div>
+            <div class="fs-3 fw-bold mt-1 text-primary"><%= stats.total_assignments || 0 %></div>
+          </div>
+          <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+            <i class="bi bi-journal-text"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-sm-6 col-lg-3">
+      <div class="card stat-card stat-warning">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <div class="text-muted small fw-semibold">ĐỀ TÀI ĐỒ ÁN TỐT NGHIỆP</div>
+            <div class="fs-3 fw-bold mt-1 text-warning"><%= stats.total_theses || 0 %></div>
+          </div>
+          <div class="stat-icon bg-warning bg-opacity-10 text-warning">
+            <i class="bi bi-award"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-sm-6 col-lg-3">
+      <div class="card stat-card stat-success">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <div class="text-muted small fw-semibold">TỔNG BÀI ĐÃ THU ĐƯỢC</div>
+            <div class="fs-3 fw-bold mt-1 text-success"><%= stats.total_submissions || 0 %></div>
+          </div>
+          <div class="stat-icon bg-success bg-opacity-10 text-success">
+            <i class="bi bi-inbox-fill"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-sm-6 col-lg-3">
+      <div class="card stat-card stat-info">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <div class="text-muted small fw-semibold">BÀI CHỜ CHẤM ĐIỂM</div>
+            <div class="fs-3 fw-bold mt-1 text-info"><%= stats.pending_grading || 0 %></div>
+          </div>
+          <div class="stat-icon bg-info bg-opacity-10 text-info">
+            <i class="bi bi-pencil-square"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Cột trái: Bài tập & Đồ án gần đây của giảng viên -->
+    <div class="col-lg-7">
+      <div class="card shadow-sm h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span class="fw-bold"><i class="bi bi-list-task me-1 text-primary"></i> Bài Tập / Đồ Án Của Thầy/Cô</span>
+          <a href="/assignments?mine=true" class="small text-decoration-none">Xem tất cả &rarr;</a>
+        </div>
+        <div class="card-body p-0">
+          <% if (recentAssignments.length === 0) { %>
+            <div class="p-4 text-center text-muted">
+              <i class="bi bi-folder2-open fs-1 d-block mb-2 text-secondary"></i>
+              Thầy/cô chưa tạo bài tập hay đề tài đồ án nào.
+            </div>
+          <% } else { %>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Tiêu đề</th>
+                    <th>Loại</th>
+                    <th>Hạn nộp</th>
+                    <th>Bài nộp</th>
+                    <th>Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% recentAssignments.forEach(assign => { %>
+                    <tr>
+                      <td>
+                        <a href="/assignments/<%= assign.id %>" class="fw-bold text-decoration-none text-dark">
+                          <%= assign.title %>
+                        </a>
+                      </td>
+                      <td>
+                        <% if (assign.type === 'graduation_thesis') { %>
+                          <span class="badge badge-thesis">Đồ án tốt nghiệp</span>
+                        <% } else { %>
+                          <span class="badge badge-assignment">Bài tập môn học</span>
+                        <% } %>
+                      </td>
+                      <td>
+                        <span class="small text-muted"><%= moment(assign.due_date).format('DD/MM/YYYY HH:mm') %></span>
+                      </td>
+                      <td>
+                        <span class="badge bg-secondary"><%= assign.submission_count %> bài</span>
+                      </td>
+                      <td>
+                        <a href="/assignments/<%= assign.id %>" class="btn btn-sm btn-outline-primary" title="Xem danh sách bài nộp & chấm điểm">
+                          <i class="bi bi-eye"></i>
+                        </a>
+                      </td>
+                    </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cột phải: Các bài nộp mới nhất của sinh viên -->
+    <div class="col-lg-5">
+      <div class="card shadow-sm h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span class="fw-bold"><i class="bi bi-clock-history me-1 text-success"></i> Bài Sinh Viên Vừa Nộp</span>
+        </div>
+        <div class="card-body p-0">
+          <% if (recentSubmissions.length === 0) { %>
+            <div class="p-4 text-center text-muted">
+              <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
+              Chưa có sinh viên nào nộp bài.
+            </div>
+          <% } else { %>
+            <div class="list-group list-group-flush">
+              <% recentSubmissions.forEach(sub => { %>
+                <div class="list-group-item p-3">
+                  <div class="d-flex justify-content-between align-items-start mb-1">
+                    <span class="fw-bold"><%= sub.student_name %></span>
+                    <span class="badge <%= sub.status === 'graded' ? 'bg-success' : 'bg-warning text-dark' %>">
+                      <%= sub.status === 'graded' ? `${sub.score} điểm` : 'Chưa chấm' %>
+                    </span>
+                  </div>
+                  <div class="small text-muted mb-1">
+                    <span>MSSV: <%= sub.student_code %></span> &bull; 
+                    <span class="text-truncate d-inline-block" style="max-width: 200px;"><%= sub.assignment_title %></span>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center">
+                    <span class="small <%= sub.is_late ? 'text-danger' : 'text-success' %>">
+                      <i class="bi <%= sub.is_late ? 'bi-exclamation-circle' : 'bi-check-circle' %>"></i>
+                      <%= sub.is_late ? 'Nộp muộn' : 'Đúng hạn' %> (<%= moment(sub.submitted_at).fromNow() %>)
+                    </span>
+                    <a href="/assignments/<%= sub.assignment_id %>" class="btn btn-sm btn-link text-decoration-none">Chấm bài &rarr;</a>
+                  </div>
+                </div>
+              <% }) %>
+            </div>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<%- include('../layouts/footer') %>

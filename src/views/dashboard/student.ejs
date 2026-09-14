@@ -1,0 +1,173 @@
+<%- include('../layouts/header') %>
+<%- include('../layouts/navbar') %>
+
+<main class="container my-4">
+  <%- include('../layouts/alerts') %>
+
+  <!-- Header Sinh viên -->
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+    <div>
+      <h2 class="fw-bold mb-1">Bảng Điều Khiển Sinh Viên</h2>
+      <p class="text-muted mb-0">Xin chào bạn <strong><%= user.full_name %></strong> (MSSV: <%= user.user_code %> - Lớp: <%= user.department || 'N/A' %>)</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="/assignments" class="btn btn-primary">
+        <i class="bi bi-search me-1"></i> Tìm Bài Tập & Đồ Án
+      </a>
+      <a href="/submissions/my" class="btn btn-outline-secondary">
+        <i class="bi bi-folder-check me-1"></i> Xem Bài Đã Nộp
+      </a>
+    </div>
+  </div>
+
+  <!-- Thống kê tiến độ sinh viên -->
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6 col-lg-4">
+      <div class="card stat-card">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <div class="text-muted small fw-semibold">TỔNG BÀI ĐƯỢC GIAO</div>
+            <div class="fs-3 fw-bold mt-1 text-primary"><%= stats.total_assignments || 0 %></div>
+          </div>
+          <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+            <i class="bi bi-journal-album"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-sm-6 col-lg-4">
+      <div class="card stat-card stat-success">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <div class="text-muted small fw-semibold">BÀI BẠN ĐÃ NỘP</div>
+            <div class="fs-3 fw-bold mt-1 text-success"><%= stats.submitted_count || 0 %></div>
+          </div>
+          <div class="stat-icon bg-success bg-opacity-10 text-success">
+            <i class="bi bi-check-circle-fill"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-sm-6 col-lg-4">
+      <div class="card stat-card stat-info">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <div class="text-muted small fw-semibold">BÀI ĐÃ ĐƯỢC CHẤM ĐIỂM</div>
+            <div class="fs-3 fw-bold mt-1 text-info"><%= stats.graded_count || 0 %></div>
+          </div>
+          <div class="stat-icon bg-info bg-opacity-10 text-info">
+            <i class="bi bi-star-fill"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Cột trái: Bài tập & Đồ án đang mở (Sắp đến hạn) -->
+    <div class="col-lg-7">
+      <div class="card shadow-sm h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span class="fw-bold"><i class="bi bi-alarm me-1 text-warning"></i> Bài Tập / Đồ Án Đang Mở (Sắp Đến Hạn)</span>
+          <a href="/assignments" class="small text-decoration-none">Xem tất cả &rarr;</a>
+        </div>
+        <div class="card-body p-0">
+          <% if (upcomingAssignments.length === 0) { %>
+            <div class="p-4 text-center text-muted">
+              <i class="bi bi-check-all fs-1 d-block mb-2 text-success"></i>
+              Hiện tại không có bài tập hoặc đồ án nào sắp hết hạn!
+            </div>
+          <% } else { %>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Tên bài tập / đồ án</th>
+                    <th>Hạn nộp</th>
+                    <th>Trạng thái của bạn</th>
+                    <th>Hành động</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% upcomingAssignments.forEach(item => { %>
+                    <tr>
+                      <td>
+                        <a href="/assignments/<%= item.id %>" class="fw-bold text-decoration-none text-dark d-block">
+                          <%= item.title %>
+                        </a>
+                        <small class="text-muted">GV: <%= item.teacher_name %></small>
+                      </td>
+                      <td>
+                        <span class="badge bg-light text-dark border">
+                          <%= moment(item.due_date).format('DD/MM/YYYY HH:mm') %>
+                        </span>
+                      </td>
+                      <td>
+                        <% if (item.submission_id) { %>
+                          <% if (item.submission_status === 'graded') { %>
+                            <span class="badge bg-success">Đã chấm: <%= item.score %> đ</span>
+                          <% } else { %>
+                            <span class="badge bg-primary">Đã nộp bài</span>
+                          <% } %>
+                        <% } else { %>
+                          <span class="badge bg-danger">Chưa nộp</span>
+                        <% } %>
+                      </td>
+                      <td>
+                        <a href="/assignments/<%= item.id %>" class="btn btn-sm <%= item.submission_id ? 'btn-outline-primary' : 'btn-danger' %>">
+                          <%= item.submission_id ? 'Xem lại' : 'Nộp ngay' %>
+                        </a>
+                      </td>
+                    </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cột phải: Điểm số vừa nhận -->
+    <div class="col-lg-5">
+      <div class="card shadow-sm h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span class="fw-bold"><i class="bi bi-stars me-1 text-warning"></i> Kết Quả Chấm Điểm Gần Đây</span>
+          <a href="/submissions/my" class="small text-decoration-none">Lịch sử &rarr;</a>
+        </div>
+        <div class="card-body p-0">
+          <% if (recentGraded.length === 0) { %>
+            <div class="p-4 text-center text-muted">
+              <i class="bi bi-hourglass-split fs-1 d-block mb-2 text-secondary"></i>
+              Chưa có kết quả chấm điểm mới nào.
+            </div>
+          <% } else { %>
+            <div class="list-group list-group-flush">
+              <% recentGraded.forEach(sub => { %>
+                <div class="list-group-item p-3">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="fw-bold text-truncate" style="max-width: 220px;"><%= sub.assignment_title %></span>
+                    <span class="fs-5 fw-bold text-success"><%= sub.score %> <small class="text-muted fs-6">/ 10</small></span>
+                  </div>
+                  <div class="small text-muted mb-2">Giảng viên: <%= sub.teacher_name %></div>
+                  <% if (sub.feedback) { %>
+                    <div class="p-2 bg-light rounded small text-secondary fst-italic mb-2">
+                      <i class="bi bi-chat-left-quote me-1"></i> "<%= sub.feedback %>"
+                    </div>
+                  <% } %>
+                  <div class="text-end">
+                    <a href="/assignments/<%= sub.assignment_id %>" class="small text-decoration-none">Xem chi tiết &rarr;</a>
+                  </div>
+                </div>
+              <% }) %>
+            </div>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<%- include('../layouts/footer') %>
