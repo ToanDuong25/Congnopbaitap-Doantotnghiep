@@ -16,8 +16,8 @@ const config = {
     min: 0,
     idleTimeoutMillis: 30000,
   },
-  connectionTimeout: 15000,
-  requestTimeout: 15000,
+  connectionTimeout: 8000,
+  requestTimeout: 8000,
 };
 
 if (process.env.DB_INSTANCE) {

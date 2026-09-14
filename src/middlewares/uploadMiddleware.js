@@ -2,20 +2,37 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// Đảm bảo thư mục lưu trữ tồn tại
-const assignmentDir = path.join(__dirname, '../../uploads/assignments');
-const submissionDir = path.join(__dirname, '../../uploads/submissions');
+// Hỗ trợ môi trường Serverless Vercel (chỉ cho phép ghi vào /tmp)
+const isVercel = process.env.VERCEL === '1' || Boolean(process.env.VERCEL);
+const baseUploadDir = isVercel ? '/tmp/uploads' : path.join(__dirname, '../../uploads');
 
-if (!fs.existsSync(assignmentDir)) {
-  fs.mkdirSync(assignmentDir, { recursive: true });
+const assignmentDir = path.join(baseUploadDir, 'assignments');
+const submissionDir = path.join(baseUploadDir, 'submissions');
+
+try {
+  if (!fs.existsSync(assignmentDir)) {
+    fs.mkdirSync(assignmentDir, { recursive: true });
+  }
+} catch (err) {
+  console.warn('Không thể tạo thư mục assignmentDir:', err.message);
 }
-if (!fs.existsSync(submissionDir)) {
-  fs.mkdirSync(submissionDir, { recursive: true });
+
+try {
+  if (!fs.existsSync(submissionDir)) {
+    fs.mkdirSync(submissionDir, { recursive: true });
+  }
+} catch (err) {
+  console.warn('Không thể tạo thư mục submissionDir:', err.message);
 }
 
 // Cấu hình lưu trữ cho tài liệu đề bài của Giảng viên
 const assignmentStorage = multer.diskStorage({
   destination: function (req, file, cb) {
+    try {
+      if (!fs.existsSync(assignmentDir)) {
+        fs.mkdirSync(assignmentDir, { recursive: true });
+      }
+    } catch (e) {}
     cb(null, assignmentDir);
   },
   filename: function (req, file, cb) {
@@ -28,11 +45,16 @@ const assignmentStorage = multer.diskStorage({
 // Cấu hình lưu trữ cho bài nộp của Sinh viên
 const submissionStorage = multer.diskStorage({
   destination: function (req, file, cb) {
+    try {
+      if (!fs.existsSync(submissionDir)) {
+        fs.mkdirSync(submissionDir, { recursive: true });
+      }
+    } catch (e) {}
     cb(null, submissionDir);
   },
   filename: function (req, file, cb) {
     const ext = path.extname(file.originalname);
-    const studentCode = req.session.user ? req.session.user.user_code : 'anonymous';
+    const studentCode = req.session && req.session.user ? req.session.user.user_code : 'anonymous';
     const sanitizedBase = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
     cb(null, `sub_${studentCode}_${Date.now()}_${sanitizedBase}${ext}`);
   },
@@ -58,11 +80,14 @@ const uploadAssignmentAttachment = multer({
 
 const uploadSubmission = multer({
   storage: submissionStorage,
-  limits: { fileSize: 100 * 1024 * 1024 }, // Tối đa 100MB cho đồ án / bài tập
+  limits: { fileSize: 100 * 1024 * 1024 }, // Tối đa 100MB
   fileFilter: fileFilter,
 });
 
 module.exports = {
   uploadAssignmentAttachment,
   uploadSubmission,
+  assignmentDir,
+  submissionDir,
+  isVercel,
 };

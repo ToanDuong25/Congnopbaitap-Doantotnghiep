@@ -1,11 +1,11 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const session = require('express-session');
 const flash = require('connect-flash');
 const methodOverride = require('method-override');
 require('dotenv').config();
 
-const { getPool } = require('./src/config/db');
 const { initDatabase } = require('./src/config/initDb');
 
 // Import routes
@@ -16,14 +16,23 @@ const submissionRoutes = require('./src/routes/submissionRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const isVercel = process.env.VERCEL === '1' || Boolean(process.env.VERCEL);
 
-// 1. Cấu hình View Engine (EJS)
+// 1. Cấu hình View Engine (EJS) - Hỗ trợ cả môi trường Local và Vercel Serverless
 app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'src/views'));
+app.set('views', [
+  path.join(__dirname, 'src/views'),
+  path.join(process.cwd(), 'src/views'),
+]);
 
 // 2. Static files & Uploads
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(process.cwd(), 'public')));
 app.use(express.static(path.join(__dirname, 'src/public')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+if (isVercel) {
+  app.use('/uploads', express.static('/tmp/uploads'));
+}
 
 // 3. Middlewares phân tích Request body
 app.use(express.urlencoded({ extended: true }));
@@ -39,6 +48,7 @@ app.use(
     cookie: {
       maxAge: 24 * 60 * 60 * 1000, // 1 ngày
       httpOnly: true,
+      secure: false, // Để false để session hoạt động mượt mà trên serverless proxy
     },
   })
 );
@@ -68,22 +78,30 @@ app.use((req, res) => {
   });
 });
 
-// 8. Khởi chạy Server và kiểm tra CSDL
-async function startServer() {
-  try {
-    console.log('🚀 Đang kiểm tra kết nối Microsoft SQL Server...');
-    await initDatabase();
-    console.log('✅ Cơ sở dữ liệu SQL Server đã sẵn sàng!');
-  } catch (err) {
-    console.warn('⚠️ CẢNH BÁO: Chưa thể kết nối hoặc khởi tạo CSDL SQL Server.');
-    console.warn('   Lỗi:', err.message);
-    console.warn('👉 Hãy đảm bảo dịch vụ SQL Server đang chạy và thông tin trong file .env là chính xác.');
-    console.warn('   Sau khi cấu hình .env, bạn có thể chạy lại: npm run init-db');
-  }
+// 8. Error handling middleware tập trung để ngăn chặn 500 FUNCTION_INVOCATION_FAILED
+app.use((err, req, res, next) => {
+  console.error('🔥 Lỗi hệ thống:', err);
+  res.status(500).render('dashboard/error', {
+    title: '500 - Lỗi máy chủ',
+    user: req.session ? req.session.user : null,
+    error_msg: 'Đã xảy ra lỗi trong quá trình xử lý: ' + (err.message || 'Lỗi không xác định'),
+  });
+});
+
+// 9. Khởi chạy Server
+if (!isVercel) {
+  initDatabase()
+    .then(() => {
+      console.log('✅ Cơ sở dữ liệu SQL Server đã sẵn sàng!');
+    })
+    .catch((err) => {
+      console.warn('⚠️ CẢNH BÁO: Chưa thể kết nối SQL Server:', err.message);
+      console.warn('👉 Kiểm tra lại file .env và chạy: npm run init-db');
+    });
 
   app.listen(PORT, () => {
     console.log(`\n=============================================================`);
-    console.log(`🎉 Ứng dụng Nộp Bài Tập & Đồ Án Tốt Nghiệp đã khởi chạy thành công!`);
+    console.log(`🎉 Ứng dụng Nộp Bài Tập & Đồ Án Tốt Nghiệp đã chạy thành công!`);
     console.log(`🌐 Truy cập hệ thống tại: http://localhost:${PORT}`);
     console.log(`👨‍🏫 Giảng viên mẫu: giangvien@school.edu.vn / password123`);
     console.log(`👩‍🎓 Sinh viên mẫu:  sinhvien@school.edu.vn  / password123`);
@@ -91,4 +109,5 @@ async function startServer() {
   });
 }
 
-startServer();
+// Export cho Vercel Serverless Function
+module.exports = app;
