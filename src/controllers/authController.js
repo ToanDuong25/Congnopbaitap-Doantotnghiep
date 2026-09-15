@@ -8,7 +8,7 @@ exports.showLogin = (req, res) => {
   });
 };
 
-// Xử lý đăng nhập
+
 exports.login = async (req, res) => {
   const { account, password } = req.body;
 
