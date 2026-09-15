@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const { sql, getPool } = require('../config/db');
 
-// Hiển thị form đăng nhập
+// Hiển thị form đăng 
 exports.showLogin = (req, res) => {
   res.render('auth/login', {
     title: 'Đăng nhập - Hệ thống Nộp Bài Tập & Đồ Án',
