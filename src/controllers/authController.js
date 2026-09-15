@@ -19,7 +19,6 @@ exports.login = async (req, res) => {
 
   try {
     const pool = await getPool();
-    // Cho phép đăng nhập bằng email hoặc mã số (MSSV / Mã GV)
     const result = await pool.request()
       .input('account', sql.NVarChar, account.trim())
       .query(`
@@ -51,7 +50,7 @@ exports.login = async (req, res) => {
     };
 
     req.flash('success_msg', `Xin chào, ${user.full_name}! Đăng nhập thành công.`);
-    
+
     const returnTo = req.session.returnTo || '/dashboard';
     delete req.session.returnTo;
     return res.redirect(returnTo);
