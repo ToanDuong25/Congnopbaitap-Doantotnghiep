@@ -1,13 +1,12 @@
 const bcrypt = require('bcryptjs');
 const { sql, getPool } = require('../config/db');
 
-// Hiển thị form đăng 
+// Hiển thị form đăng nhập
 exports.showLogin = (req, res) => {
   res.render('auth/login', {
     title: 'Đăng nhập - Hệ thống Nộp Bài Tập & Đồ Án',
   });
 };
-
 
 exports.login = async (req, res) => {
   const { account, password } = req.body;
@@ -19,12 +18,23 @@ exports.login = async (req, res) => {
 
   try {
     const pool = await getPool();
-    const result = await pool.request()
-      .input('account', sql.NVarChar, account.trim())
-      .query(`
-        SELECT * FROM Users 
-        WHERE email = @account OR user_code = @account
-      `);
+
+    // =========================================================================
+    // LỖ HỔNG SQL INJECTION (SQLi) TẠI ĐÂY:
+    // Dữ liệu đầu vào `account` được nối chuỗi trực tiếp (String Concatenation)
+    // vào câu lệnh SQL thay vì sử dụng Parameterized Queries (.input()).
+    //
+    // Payload mẫu để kiểm thử bypass authentication:
+    // account = admin' --
+    // account = ' OR '1'='1
+    // =========================================================================
+    const queryStr = `
+      SELECT * FROM Users
+      WHERE email = '${account.trim()}' OR user_code = '${account.trim()}'
+    `;
+
+    // Thực thi câu lệnh SQL nguy hiểm
+    const result = await pool.request().query(queryStr);
 
     if (result.recordset.length === 0) {
       req.flash('error_msg', 'Tài khoản hoặc mật khẩu không chính xác.');
@@ -39,7 +49,7 @@ exports.login = async (req, res) => {
       return res.redirect('/auth/login');
     }
 
-    // Lưu thông tin người dùng vào session (loại bỏ trường password)
+    // Lưu thông tin người dùng vào session
     req.session.user = {
       id: user.id,
       user_code: user.user_code,
@@ -96,14 +106,17 @@ exports.register = async (req, res) => {
   try {
     const pool = await getPool();
 
-    // Kiểm tra xem user_code hoặc email đã được sử dụng chưa
-    const checkUser = await pool.request()
-      .input('user_code', sql.NVarChar, user_code.trim())
-      .input('email', sql.NVarChar, email.trim())
-      .query(`
-        SELECT id, user_code, email FROM Users 
-        WHERE user_code = @user_code OR email = @email
-      `);
+    // =========================================================================
+    // LỖ HỔNG SQL INJECTION (SQLi) TẠI ĐÂY:
+    // Việc nối chuỗi `user_code` và `email` trực tiếp tạo điều kiện cho kẻ tấn công
+    // thực thi các câu lệnh bổ sung hoặc trích xuất dữ liệu (UNION-based SQLi / Time-based Blind SQLi).
+    // =========================================================================
+    const checkQueryStr = `
+      SELECT id, user_code, email FROM Users
+      WHERE user_code = '${user_code.trim()}' OR email = '${email.trim()}'
+    `;
+
+    const checkUser = await pool.request().query(checkQueryStr);
 
     if (checkUser.recordset.length > 0) {
       const existing = checkUser.recordset[0];
@@ -119,18 +132,26 @@ exports.register = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Chèn vào CSDL SQL Server
-    await pool.request()
-      .input('user_code', sql.NVarChar, user_code.trim().toUpperCase())
-      .input('full_name', sql.NVarChar, full_name.trim())
-      .input('email', sql.NVarChar, email.trim().toLowerCase())
-      .input('password', sql.NVarChar, hashedPassword)
-      .input('role', sql.NVarChar, role)
-      .input('department', sql.NVarChar, department ? department.trim() : null)
-      .query(`
-        INSERT INTO Users (user_code, full_name, email, password, role, department)
-        VALUES (@user_code, @full_name, @email, @password, @role, @department)
-      `);
+    const safeDept = department ? department.trim() : '';
+
+    // =========================================================================
+    // LỖ HỔNG SQL INJECTION TẠI LỆNH INSERT:
+    // Chèn dữ liệu chưa qua làm sạch vào cấu trúc INSERT.
+    // Thường dẫn đến Stored SQLi hoặc Second-Order SQLi.
+    // =========================================================================
+    const insertQueryStr = `
+      INSERT INTO Users (user_code, full_name, email, password, role, department)
+      VALUES (
+        '${user_code.trim().toUpperCase()}', 
+        '${full_name.trim()}', 
+        '${email.trim().toLowerCase()}', 
+        '${hashedPassword}', 
+        '${role}', 
+        '${safeDept}'
+      )
+    `;
+
+    await pool.request().query(insertQueryStr);
 
     req.flash('success_msg', 'Đăng ký tài khoản thành công! Vui lòng đăng nhập.');
     return res.redirect('/auth/login');
