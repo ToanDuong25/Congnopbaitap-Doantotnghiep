@@ -74,27 +74,35 @@ exports.submitAssignment = async (req, res) => {
           WHERE id = @id
         `);
 
-      req.flash('success_msg', isLate 
-        ? 'Bạn đã nộp lại bài thành công (Lưu ý: Đã quá hạn nộp bài).' 
+      req.flash('success_msg', isLate
+        ? 'Bạn đã nộp lại bài thành công (Lưu ý: Đã quá hạn nộp bài).'
         : 'Cập nhật nộp lại bài tập thành công!');
     } else {
-      // Nộp bài mới lần đầu
-      await pool.request()
-        .input('assignment_id', sql.Int, assignmentId)
-        .input('student_id', sql.Int, user.id)
-        .input('file_path', sql.NVarChar, filePath)
-        .input('original_filename', sql.NVarChar, originalFilename)
-        .input('file_size', sql.BigInt, fileSize)
-        .input('note', sql.NVarChar, note ? note.trim() : '')
-        .input('is_late', sql.Bit, isLate ? 1 : 0)
-        .input('submitted_at', sql.DateTime, now)
-        .query(`
-          INSERT INTO Submissions (assignment_id, student_id, file_path, original_filename, file_size, note, is_late, submitted_at, status)
-          VALUES (@assignment_id, @student_id, @file_path, @original_filename, @file_size, @note, @is_late, @submitted_at, 'submitted')
-        `);
+      // ⚠️ ĐOẠN MÃ CỐ TÌNH CHỨA LỖ HỔNG SQL INJECTION (CHỈ DÙNG ĐỂ DEMO/THỬ NGHIỆM)
+      // Nối trực tiếp dữ liệu từ người dùng (như 'note', 'originalFilename') vào chuỗi SQL thay vì dùng .input()
+      const noteInput = note ? note.trim() : '';
+      const formattedDate = now instanceof Date ? now.toISOString() : now;
 
-      req.flash('success_msg', isLate 
-        ? 'Nộp bài thành công (Lưu ý: Hệ thống ghi nhận bạn đã nộp trễ hạn).' 
+      const rawQuery = `
+        INSERT INTO Submissions (assignment_id, student_id, file_path, original_filename, file_size, note, is_late, submitted_at, status)
+        VALUES (
+          ${assignmentId}, 
+          ${user.id}, 
+          '${filePath}', 
+          '${originalFilename}', 
+          ${fileSize}, 
+          '${noteInput}', 
+          ${isLate ? 1 : 0}, 
+          '${formattedDate}', 
+          'submitted'
+        )
+      `;
+
+      // Thực thi truy vấn nối chuỗi thô trực tiếp
+      await pool.request().query(rawQuery);
+
+      req.flash('success_msg', isLate
+        ? 'Nộp bài thành công (Lưu ý: Hệ thống ghi nhận bạn đã nộp trễ hạn).'
         : 'Nộp bài tập thành công!');
     }
 
@@ -105,6 +113,7 @@ exports.submitAssignment = async (req, res) => {
     return res.redirect(`/assignments/${assignmentId}`);
   }
 };
+
 
 // Giảng viên chấm điểm bài nộp
 exports.gradeSubmission = async (req, res) => {
