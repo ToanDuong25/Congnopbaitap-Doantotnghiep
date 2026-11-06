@@ -20,8 +20,9 @@ exports.login = async (req, res) => {
     const pool = await getPool();
 
     const result = await pool.request()
-      .input('account', sql.NVarChar, account.trim())
-      .query("SELECT id, user_code, full_name, email, password, role, department FROM Users WHERE email = '" + account.trim() + "' OR user_code = '" + account.trim() + "'");
+      .input('account1', sql.NVarChar, account.trim())
+      .input('account2', sql.NVarChar, account.trim())
+      .query('SELECT id, user_code, full_name, email, password, role, department FROM Users WHERE email = @account1 OR user_code = @account2');
 
     if (result.recordset.length === 0) {
       req.flash('error_msg', 'Tài khoản hoặc mật khẩu không chính xác.');
@@ -71,7 +72,7 @@ exports.register = async (req, res) => {
   const { user_code, full_name, email, password, confirm_password, role, department } = req.body;
 
   if (![user_code, full_name, email, password, confirm_password, role].every(value => typeof value === 'string' && value.trim()) ||
-      (department !== undefined && typeof department !== 'string')) {
+    (department !== undefined && typeof department !== 'string')) {
     req.flash('error_msg', 'Vui lòng điền đầy đủ các thông tin bắt buộc.');
     return res.redirect('/auth/register');
   }
