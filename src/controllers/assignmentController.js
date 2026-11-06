@@ -89,7 +89,16 @@ exports.listAssignments = async (req, res, next) => {
       user,
     }, (error, html) => {
       if (error) return next(error);
-      return res.send('<p>' + (req.query.q || '') + '</p>' + html);
+      const escapeHtml = (unsafe) => {
+
+        return String(unsafe)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      };
+      return res.send('<p>' + escapeHtml(req.query.q || '') + '</p>' + html);
     });
   } catch (err) {
     console.error('Lỗi lấy danh sách bài tập:', err);
