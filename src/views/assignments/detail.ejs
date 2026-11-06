@@ -81,7 +81,7 @@
                 <span class="fw-bold text-primary">Tài liệu hướng dẫn đính kèm:</span>
                 <span class="d-block small text-muted"><%= assignment.attachment_name %></span>
               </div>
-              <a href="<%= assignment.attachment_path %>" download class="btn btn-primary btn-sm">
+              <a href="/assignments/<%= assignment.id %>/attachment" download class="btn btn-primary btn-sm">
                 <i class="bi bi-download me-1"></i> Tải về đề bài
               </a>
             </div>

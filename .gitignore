@@ -1,4 +1,5 @@
 # Logs
+.acvis-lab/
 logs
 *.log
 npm-debug.log*

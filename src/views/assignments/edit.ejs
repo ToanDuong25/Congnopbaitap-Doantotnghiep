@@ -72,7 +72,7 @@
                     <i class="bi bi-file-earmark-arrow-down me-1 text-primary"></i>
                     <span><%= assignment.attachment_name %></span>
                   </div>
-                  <a href="<%= assignment.attachment_path %>" download class="btn btn-sm btn-outline-primary">Tải file hiện tại</a>
+                  <a href="/assignments/<%= assignment.id %>/attachment" download class="btn btn-sm btn-outline-primary">Tải file hiện tại</a>
                 </div>
               <% } %>
               <div class="dropzone-box" onclick="document.getElementById('attachment').click();">

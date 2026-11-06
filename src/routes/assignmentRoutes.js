@@ -13,6 +13,7 @@ router.get('/create', isAuthenticated, isTeacher, assignmentController.showCreat
 router.post('/', isAuthenticated, isTeacher, uploadAssignmentAttachment.single('attachment'), assignmentController.createAssignment);
 
 // Xem chi tiết
+router.get('/:id/attachment', isAuthenticated, assignmentController.downloadAttachment);
 router.get('/:id', isAuthenticated, assignmentController.showDetail);
 
 // Sửa bài tập (Chỉ Giảng viên)

@@ -2,12 +2,30 @@ const path = require('path');
 const fs = require('fs');
 const moment = require('moment');
 const { sql, getPool } = require('../config/db');
+const { resolveUploadFile } = require('../services/fileStorage');
+
+exports.downloadAttachment = async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id < 1) return res.status(400).send('Mã bài tập không hợp lệ.');
+    const pool = await getPool();
+    const result = await pool.request().input('id', sql.Int, id)
+      .query('SELECT attachment_path, attachment_name FROM Assignments WHERE id = @id');
+    const assignment = result.recordset[0];
+    if (!assignment) return res.status(404).send('Không tìm thấy đề bài.');
+    const file = resolveUploadFile(assignment.attachment_path, 'assignments');
+    if (!file) return res.status(404).send('File đề bài không còn tồn tại.');
+    res.attachment(assignment.attachment_name);
+    return res.sendFile(file);
+  } catch (error) { return next(error); }
+};
 
 // Danh sách bài tập / đồ án
-exports.listAssignments = async (req, res) => {
+exports.listAssignments = async (req, res, next) => {
   try {
     const pool = await getPool();
     const typeFilter = req.query.type || 'all'; // all, assignment, graduation_thesis
+    const searchQuery = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 200) : '';
     const user = req.session.user;
 
     let query = `
@@ -27,10 +45,10 @@ exports.listAssignments = async (req, res) => {
     // Nếu là sinh viên, lấy thêm thông tin bài nộp của chính sinh viên đó
     if (user.role === 'student') {
       query += `,
-        (SELECT TOP 1 s.id FROM Submissions s WHERE s.assignment_id = a.id AND s.student_id = ${user.id}) AS my_submission_id,
-        (SELECT TOP 1 s.score FROM Submissions s WHERE s.assignment_id = a.id AND s.student_id = ${user.id}) AS my_score,
-        (SELECT TOP 1 s.is_late FROM Submissions s WHERE s.assignment_id = a.id AND s.student_id = ${user.id}) AS my_is_late,
-        (SELECT TOP 1 s.status FROM Submissions s WHERE s.assignment_id = a.id AND s.student_id = ${user.id}) AS my_status
+        (SELECT TOP 1 s.id FROM Submissions s WHERE s.assignment_id = a.id AND s.student_id = @studentId) AS my_submission_id,
+        (SELECT TOP 1 s.score FROM Submissions s WHERE s.assignment_id = a.id AND s.student_id = @studentId) AS my_score,
+        (SELECT TOP 1 s.is_late FROM Submissions s WHERE s.assignment_id = a.id AND s.student_id = @studentId) AS my_is_late,
+        (SELECT TOP 1 s.status FROM Submissions s WHERE s.assignment_id = a.id AND s.student_id = @studentId) AS my_status
       `;
     }
 
@@ -40,6 +58,7 @@ exports.listAssignments = async (req, res) => {
     `;
 
     const request = pool.request();
+    if (user.role === 'student') request.input('studentId', sql.Int, user.id);
 
     if (typeFilter !== 'all') {
       query += ` WHERE a.type = @typeFilter `;
@@ -52,6 +71,10 @@ exports.listAssignments = async (req, res) => {
       request.input('teacherId', sql.Int, user.id);
     }
 
+    if (searchQuery) {
+      query += query.includes(' WHERE a.') ? ' AND a.title LIKE @searchQuery ' : ' WHERE a.title LIKE @searchQuery ';
+      request.input('searchQuery', sql.NVarChar, '%' + searchQuery + '%');
+    }
     query += ` ORDER BY a.due_date DESC`;
 
     const result = await request.query(query);
@@ -60,8 +83,13 @@ exports.listAssignments = async (req, res) => {
       title: 'Danh sách Bài tập & Đồ án',
       assignments: result.recordset,
       typeFilter,
+      searchQuery,
+      mineFilter: user.role === 'teacher' && req.query.mine === 'true',
       moment,
       user,
+    }, (error, html) => {
+      if (error) return next(error);
+      return res.send(html);
     });
   } catch (err) {
     console.error('Lỗi lấy danh sách bài tập:', err);
@@ -145,6 +173,9 @@ exports.showDetail = async (req, res) => {
     }
 
     const assignment = assignmentRes.recordset[0];
+    if (user.role === 'teacher' && assignment.teacher_id !== user.id) {
+      return res.status(403).send('Bạn không có quyền xem bài nộp của lớp này.');
+    }
     let mySubmission = null;
     let submissions = [];
 

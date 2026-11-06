@@ -6,7 +6,13 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "init-db": "node src/config/initDb.js"
+    "init-db": "node src/config/initDb.js",
+    "test": "node --test --test-concurrency=1 tests/security.test.js",
+    "check": "node tools/check.js",
+    "acvis:prepare": "node tools/acvis-lab.js prepare",
+    "acvis:verify": "node tools/acvis-lab.js verify",
+    "acvis:apply": "node tools/acvis-lab.js apply",
+    "acvis:restore": "node tools/acvis-lab.js restore"
   },
   "keywords": [
     "nodejs",

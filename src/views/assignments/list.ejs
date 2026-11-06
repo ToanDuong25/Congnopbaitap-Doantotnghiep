@@ -46,6 +46,16 @@
   </div>
 
   <!-- Danh sách bài tập -->
+  <form method="get" action="/assignments" class="d-flex gap-2 mb-3" role="search">
+    <input type="hidden" name="type" value="<%= typeFilter %>">
+    <% if (mineFilter) { %><input type="hidden" name="mine" value="true"><% } %>
+    <label class="visually-hidden" for="assignment-search">Tìm theo tiêu đề bài tập</label>
+    <input id="assignment-search" type="search" name="q" value="<%= searchQuery %>" maxlength="200" class="form-control" placeholder="Tìm theo tiêu đề bài tập…">
+    <button type="submit" class="btn btn-primary">Tìm kiếm</button>
+  </form>
+  <% if (searchQuery) { %>
+    <p class="text-muted">Kết quả tìm kiếm cho: <strong><%= searchQuery %></strong></p>
+  <% } %>
   <div class="row g-4">
     <% if (assignments.length === 0) { %>
       <div class="col-12">

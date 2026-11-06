@@ -17,6 +17,10 @@ const submissionRoutes = require('./src/routes/submissionRoutes');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const isVercel = process.env.VERCEL === '1' || Boolean(process.env.VERCEL);
+const sessionSecret = process.env.SESSION_SECRET;
+if (typeof sessionSecret !== 'string' || Buffer.byteLength(sessionSecret) < 32) {
+  throw new Error('SESSION_SECRET must contain at least 32 bytes; configure a unique value in the environment.');
+}
 
 // 1. Cấu hình View Engine (EJS) - Hỗ trợ cả môi trường Local và Vercel Serverless
 app.set('view engine', 'ejs');
@@ -29,10 +33,7 @@ app.set('views', [
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(path.join(process.cwd(), 'public')));
 app.use(express.static(path.join(__dirname, 'src/public')));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-if (isVercel) {
-  app.use('/uploads', express.static('/tmp/uploads'));
-}
+// Private uploads are served only by the authenticated download routes.
 
 // 3. Middlewares phân tích Request body
 app.use(express.urlencoded({ extended: true }));
@@ -42,7 +43,7 @@ app.use(methodOverride('_method'));
 // 4. Session & Flash messages
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || 'secret_assignment_portal_2026',
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -89,7 +90,7 @@ app.use((err, req, res, next) => {
 });
 
 // 9. Khởi chạy Server
-if (!isVercel) {
+if (require.main === module && !isVercel) {
   initDatabase()
     .then(() => {
       console.log('✅ Cơ sở dữ liệu SQL Server đã sẵn sàng!');

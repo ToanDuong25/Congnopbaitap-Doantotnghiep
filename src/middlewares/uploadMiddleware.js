@@ -3,11 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 // Hỗ trợ môi trường Serverless Vercel (chỉ cho phép ghi vào /tmp)
-const isVercel = process.env.VERCEL === '1' || Boolean(process.env.VERCEL);
-const baseUploadDir = isVercel ? '/tmp/uploads' : path.join(__dirname, '../../uploads');
-
-const assignmentDir = path.join(baseUploadDir, 'assignments');
-const submissionDir = path.join(baseUploadDir, 'submissions');
+const { isVercel, assignmentDir, submissionDir } = require('../config/storage');
 
 try {
   if (!fs.existsSync(assignmentDir)) {
@@ -54,7 +50,7 @@ const submissionStorage = multer.diskStorage({
   },
   filename: function (req, file, cb) {
     const ext = path.extname(file.originalname);
-    const studentCode = req.session && req.session.user ? req.session.user.user_code : 'anonymous';
+    const studentCode = String(req.session?.user?.user_code || 'anonymous').replace(/[^a-zA-Z0-9_-]/g, '_');
     const sanitizedBase = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
     cb(null, `sub_${studentCode}_${Date.now()}_${sanitizedBase}${ext}`);
   },

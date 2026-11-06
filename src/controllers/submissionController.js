@@ -1,7 +1,8 @@
-const path = require('path');
 const fs = require('fs');
 const moment = require('moment');
 const { sql, getPool } = require('../config/db');
+const { resolveUploadFile } = require('../services/fileStorage');
+const { canAccessSubmission } = require('../services/submissionAccess');
 
 // Sinh viên nộp bài / nộp lại bài
 exports.submitAssignment = async (req, res) => {
@@ -49,8 +50,8 @@ exports.submitAssignment = async (req, res) => {
       const oldSub = existingSubRes.recordset[0];
 
       // Xóa file cũ trên đĩa nếu tồn tại
-      const oldDiskPath = path.join(__dirname, '../../', oldSub.file_path);
-      if (fs.existsSync(oldDiskPath)) {
+      const oldDiskPath = resolveUploadFile(oldSub.file_path, 'submissions');
+      if (oldDiskPath) {
         try { fs.unlinkSync(oldDiskPath); } catch (e) { /* ignore */ }
       }
 
@@ -78,28 +79,17 @@ exports.submitAssignment = async (req, res) => {
         ? 'Bạn đã nộp lại bài thành công (Lưu ý: Đã quá hạn nộp bài).'
         : 'Cập nhật nộp lại bài tập thành công!');
     } else {
-      // ⚠️ ĐOẠN MÃ CỐ TÌNH CHỨA LỖ HỔNG SQL INJECTION (CHỈ DÙNG ĐỂ DEMO/THỬ NGHIỆM)
-      // Nối trực tiếp dữ liệu từ người dùng (như 'note', 'originalFilename') vào chuỗi SQL thay vì dùng .input()
-      const noteInput = note ? note.trim() : '';
-      const formattedDate = now instanceof Date ? now.toISOString() : now;
-
-      const rawQuery = `
-        INSERT INTO Submissions (assignment_id, student_id, file_path, original_filename, file_size, note, is_late, submitted_at, status)
-        VALUES (
-          ${assignmentId}, 
-          ${user.id}, 
-          '${filePath}', 
-          '${originalFilename}', 
-          ${fileSize}, 
-          '${noteInput}', 
-          ${isLate ? 1 : 0}, 
-          '${formattedDate}', 
-          'submitted'
-        )
-      `;
-
-      // Thực thi truy vấn nối chuỗi thô trực tiếp
-      await pool.request().query(rawQuery);
+      await pool.request()
+        .input('assignmentId', sql.Int, assignmentId)
+        .input('studentId', sql.Int, user.id)
+        .input('filePath', sql.NVarChar, filePath)
+        .input('originalFilename', sql.NVarChar, originalFilename)
+        .input('fileSize', sql.BigInt, fileSize)
+        .input('note', sql.NVarChar, typeof note === 'string' ? note.trim() : '')
+        .input('isLate', sql.Bit, isLate ? 1 : 0)
+        .input('submittedAt', sql.DateTime, now)
+        .query(`INSERT INTO Submissions (assignment_id, student_id, file_path, original_filename, file_size, note, is_late, submitted_at, status)
+          VALUES (@assignmentId, @studentId, @filePath, @originalFilename, @fileSize, @note, @isLate, @submittedAt, 'submitted')`);
 
       req.flash('success_msg', isLate
         ? 'Nộp bài thành công (Lưu ý: Hệ thống ghi nhận bạn đã nộp trễ hạn).'
@@ -135,6 +125,15 @@ exports.gradeSubmission = async (req, res) => {
   try {
     const pool = await getPool();
 
+    const target = await pool.request()
+      .input('id', sql.Int, submissionId)
+      .query('SELECT s.*, a.teacher_id FROM Submissions s JOIN Assignments a ON s.assignment_id = a.id WHERE s.id = @id');
+    const submission = target.recordset[0];
+    if (!submission) return res.status(404).send('Không tìm thấy bài nộp.');
+    if (!['teacher', 'admin'].includes(user.role) || !canAccessSubmission(user, submission)) {
+      return res.status(403).send('Bạn không có quyền chấm bài nộp này.');
+    }
+
     await pool.request()
       .input('id', sql.Int, submissionId)
       .input('score', sql.Float, numericScore)
@@ -149,7 +148,7 @@ exports.gradeSubmission = async (req, res) => {
       `);
 
     req.flash('success_msg', 'Đã lưu điểm và nhận xét thành công!');
-    return res.redirect(assignment_id ? `/assignments/${assignment_id}` : '/dashboard');
+    return res.redirect(`/assignments/${submission.assignment_id}`);
   } catch (err) {
     console.error('Lỗi chấm điểm:', err);
     req.flash('error_msg', 'Không thể lưu điểm.');
@@ -217,18 +216,17 @@ exports.downloadFile = async (req, res) => {
     const sub = result.recordset[0];
 
     // Chỉ cho phép sinh viên nộp bài đó, hoặc giảng viên tạo đề bài, hoặc admin tải file
-    if (user.role === 'student' && sub.student_id !== user.id) {
-      req.flash('error_msg', 'Bạn không có quyền tải file của sinh viên khác.');
-      return res.redirect('/dashboard');
+    if (!canAccessSubmission(user, sub)) {
+      return res.status(403).send('Bạn không có quyền tải bài nộp này.');
     }
 
-    const fullDiskPath = path.join(__dirname, '../../', sub.file_path);
-    if (!fs.existsSync(fullDiskPath)) {
-      req.flash('error_msg', 'File không còn tồn tại trên hệ thống lưu trữ.');
-      return res.redirect('back');
+    const fullDiskPath = resolveUploadFile(sub.file_path, 'submissions');
+    if (!fullDiskPath) {
+      return res.status(404).send('File không còn tồn tại trên hệ thống lưu trữ.');
     }
 
-    return res.download(fullDiskPath, sub.original_filename);
+    res.attachment(sub.original_filename);
+    return res.sendFile(fullDiskPath);
   } catch (err) {
     console.error('Lỗi tải file:', err);
     req.flash('error_msg', 'Lỗi khi tải file.');

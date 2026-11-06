@@ -23,7 +23,7 @@
   - Phân quyền: Middlewares `isAuthenticated`, `isTeacher`, `isStudent`.
 - **ADR-004: File Handling**:
   - Dùng `multer` để upload file bài nộp vào thư mục `uploads/submissions/` và tài liệu đề bài vào `uploads/assignments/`.
-  - Tên file được hash kèm timestamp để tránh xung đột tên tiếng Việt và ghi đè file.
+  - Upload filenames use a timestamp, sanitized original basename and (for submissions) sanitized student code; they are not content hashes.
 - **ADR-005: View Layer**:
   - Template Engine: **EJS** kết hợp **Bootstrap 5**, **Bootstrap Icons**, giao diện tiếng Việt hiện đại, thân thiện và responsive.
 
@@ -33,3 +33,11 @@
 - **Table `Users`**: `id`, `user_code`, `full_name`, `email`, `password`, `role`, `department`, `created_at`.
 - **Table `Assignments`**: `id`, `title`, `description`, `type`, `due_date`, `teacher_id`, `attachment_path`, `attachment_name`, `max_score`, `created_at`, `updated_at`.
 - **Table `Submissions`**: `id`, `assignment_id`, `student_id`, `file_path`, `original_filename`, `file_size`, `note`, `submitted_at`, `is_late`, `score`, `feedback`, `graded_at`, `status`.
+
+## 4. ACVIS baseline amendment (2026-11-05)
+
+Authentication requires SESSION_SECRET from the environment (at least 32 bytes) and regenerates sessions after login. SQL input in authentication and first submission is parameterized. Teachers may read/grade submissions only for assignments they own, unless admin.
+
+Uploads are private: GET /assignments/:id/attachment and GET /submissions/:id/download enforce authentication. Submission downloads also enforce ownership. Resolved file paths must remain within the real storage directory. UPLOAD_ROOT overrides storage; defaults are local uploads/ and Vercel /tmp/uploads. Vercel storage and sessions remain ephemeral.
+
+See docs/acvis-testing.md for native CWE mapping and local-only mutation patches. No commits, pushes, database changes, or deployments are part of this work.

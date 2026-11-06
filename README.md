@@ -62,7 +62,7 @@ npm install
 Mở file `.env` và điều chỉnh các thông số kết nối phù hợp với máy tính của bạn:
 ```ini
 PORT=3000
-SESSION_SECRET=super_secret_assignment_key_2026
+SESSION_SECRET=<gia-tri-ngau-nhien-rieng-toi-thieu-32-byte>
 
 # Thông tin đăng nhập SQL Server của bạn
 DB_USER=sa
@@ -96,6 +96,21 @@ npm run init-db
   ```
 
 Truy cập website trên trình duyệt: **[http://localhost:3000](http://localhost:3000)**
+
+---
+
+## Kiểm thử ACVIS
+
+Đã chuẩn bị bản nền an toàn tại các chức năng đăng nhập/đăng ký, tìm kiếm, nộp bài,
+tải file và phân quyền bài nộp; năm patch lỗi thật được giữ riêng để áp dụng từng
+lần. **Chưa commit, push hoặc deploy.** Xem [hướng dẫn và bảng 5 MongoDB ID](docs/acvis-testing.md)
+và [phạm vi đã thống nhất](docs/acvis-test-spec.md).
+
+Chạy `npm test`, `npm run check` và `npm run acvis:verify` trước khi bắt đầu. Bản
+nền không có khóa session dự phòng; phải cấu hình `SESSION_SECRET` riêng trong
+môi trường. File upload không còn public: tải đề bài qua
+`GET /assignments/:id/attachment`, tải bài nộp qua `GET /submissions/:id/download`.
+Đây là kiểm thử có phạm vi, chưa phải kết luận toàn bộ repo không còn lỗ hổng.
 
 ---
 

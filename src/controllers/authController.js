@@ -11,7 +11,7 @@ exports.showLogin = (req, res) => {
 exports.login = async (req, res) => {
   const { account, password } = req.body;
 
-  if (!account || !password) {
+  if (typeof account !== 'string' || typeof password !== 'string' || !account.trim() || !password) {
     req.flash('error_msg', 'Vui lòng nhập đầy đủ tài khoản/email và mật khẩu.');
     return res.redirect('/auth/login');
   }
@@ -19,22 +19,9 @@ exports.login = async (req, res) => {
   try {
     const pool = await getPool();
 
-    // =========================================================================
-    // LỖ HỔNG SQL INJECTION (SQLi) TẠI ĐÂY:
-    // Dữ liệu đầu vào `account` được nối chuỗi trực tiếp (String Concatenation)
-    // vào câu lệnh SQL thay vì sử dụng Parameterized Queries (.input()).
-    //
-    // Payload mẫu để kiểm thử bypass authentication:
-    // account = admin' --
-    // account = ' OR '1'='1
-    // =========================================================================
-    const queryStr = `
-      SELECT * FROM Users
-      WHERE email = '${account.trim()}' OR user_code = '${account.trim()}'
-    `;
-
-    // Thực thi câu lệnh SQL nguy hiểm
-    const result = await pool.request().query(queryStr);
+    const result = await pool.request()
+      .input('account', sql.NVarChar, account.trim())
+      .query('SELECT id, user_code, full_name, email, password, role, department FROM Users WHERE email = @account OR user_code = @account');
 
     if (result.recordset.length === 0) {
       req.flash('error_msg', 'Tài khoản hoặc mật khẩu không chính xác.');
@@ -49,7 +36,9 @@ exports.login = async (req, res) => {
       return res.redirect('/auth/login');
     }
 
-    // Lưu thông tin người dùng vào session
+    const returnTo = req.session.returnTo || '/dashboard';
+    await new Promise((resolve, reject) => req.session.regenerate(error => error ? reject(error) : resolve()));
+    // Lưu thông tin người dùng vào session mới.
     req.session.user = {
       id: user.id,
       user_code: user.user_code,
@@ -61,12 +50,11 @@ exports.login = async (req, res) => {
 
     req.flash('success_msg', `Xin chào, ${user.full_name}! Đăng nhập thành công.`);
 
-    const returnTo = req.session.returnTo || '/dashboard';
-    delete req.session.returnTo;
+    await new Promise((resolve, reject) => req.session.save(error => error ? reject(error) : resolve()));
     return res.redirect(returnTo);
   } catch (err) {
     console.error('Lỗi đăng nhập:', err);
-    req.flash('error_msg', 'Lỗi kết nối CSDL: ' + err.message);
+    req.flash('error_msg', 'Không thể đăng nhập lúc này. Vui lòng thử lại.');
     return res.redirect('/auth/login');
   }
 };
@@ -82,7 +70,8 @@ exports.showRegister = (req, res) => {
 exports.register = async (req, res) => {
   const { user_code, full_name, email, password, confirm_password, role, department } = req.body;
 
-  if (!user_code || !full_name || !email || !password || !confirm_password || !role) {
+  if (![user_code, full_name, email, password, confirm_password, role].every(value => typeof value === 'string' && value.trim()) ||
+      (department !== undefined && typeof department !== 'string')) {
     req.flash('error_msg', 'Vui lòng điền đầy đủ các thông tin bắt buộc.');
     return res.redirect('/auth/register');
   }
@@ -106,17 +95,10 @@ exports.register = async (req, res) => {
   try {
     const pool = await getPool();
 
-    // =========================================================================
-    // LỖ HỔNG SQL INJECTION (SQLi) TẠI ĐÂY:
-    // Việc nối chuỗi `user_code` và `email` trực tiếp tạo điều kiện cho kẻ tấn công
-    // thực thi các câu lệnh bổ sung hoặc trích xuất dữ liệu (UNION-based SQLi / Time-based Blind SQLi).
-    // =========================================================================
-    const checkQueryStr = `
-      SELECT id, user_code, email FROM Users
-      WHERE user_code = '${user_code.trim()}' OR email = '${email.trim()}'
-    `;
-
-    const checkUser = await pool.request().query(checkQueryStr);
+    const checkUser = await pool.request()
+      .input('user_code', sql.NVarChar, user_code.trim())
+      .input('email', sql.NVarChar, email.trim())
+      .query('SELECT id, user_code, email FROM Users WHERE user_code = @user_code OR email = @email');
 
     if (checkUser.recordset.length > 0) {
       const existing = checkUser.recordset[0];
@@ -134,30 +116,20 @@ exports.register = async (req, res) => {
 
     const safeDept = department ? department.trim() : '';
 
-    // =========================================================================
-    // LỖ HỔNG SQL INJECTION TẠI LỆNH INSERT:
-    // Chèn dữ liệu chưa qua làm sạch vào cấu trúc INSERT.
-    // Thường dẫn đến Stored SQLi hoặc Second-Order SQLi.
-    // =========================================================================
-    const insertQueryStr = `
-      INSERT INTO Users (user_code, full_name, email, password, role, department)
-      VALUES (
-        '${user_code.trim().toUpperCase()}', 
-        '${full_name.trim()}', 
-        '${email.trim().toLowerCase()}', 
-        '${hashedPassword}', 
-        '${role}', 
-        '${safeDept}'
-      )
-    `;
-
-    await pool.request().query(insertQueryStr);
+    await pool.request()
+      .input('user_code', sql.NVarChar, user_code.trim().toUpperCase())
+      .input('full_name', sql.NVarChar, full_name.trim())
+      .input('email', sql.NVarChar, email.trim().toLowerCase())
+      .input('password', sql.NVarChar, hashedPassword)
+      .input('role', sql.NVarChar, role)
+      .input('department', sql.NVarChar, safeDept)
+      .query('INSERT INTO Users (user_code, full_name, email, password, role, department) VALUES (@user_code, @full_name, @email, @password, @role, @department)');
 
     req.flash('success_msg', 'Đăng ký tài khoản thành công! Vui lòng đăng nhập.');
     return res.redirect('/auth/login');
   } catch (err) {
     console.error('Lỗi đăng ký:', err);
-    req.flash('error_msg', 'Lỗi CSDL khi tạo tài khoản: ' + err.message);
+    req.flash('error_msg', 'Không thể tạo tài khoản lúc này. Vui lòng thử lại.');
     return res.redirect('/auth/register');
   }
 };
