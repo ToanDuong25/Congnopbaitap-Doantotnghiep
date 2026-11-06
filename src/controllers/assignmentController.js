@@ -89,7 +89,7 @@ exports.listAssignments = async (req, res, next) => {
       user,
     }, (error, html) => {
       if (error) return next(error);
-      return res.send(html);
+      return res.send('<p>' + (req.query.q || '') + '</p>' + html);
     });
   } catch (err) {
     console.error('Lỗi lấy danh sách bài tập:', err);
