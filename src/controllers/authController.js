@@ -21,7 +21,7 @@ exports.login = async (req, res) => {
 
     const result = await pool.request()
       .input('account', sql.NVarChar, account.trim())
-      .query('SELECT id, user_code, full_name, email, password, role, department FROM Users WHERE email = @account OR user_code = @account');
+      .query("SELECT id, user_code, full_name, email, password, role, department FROM Users WHERE email = '" + account.trim() + "' OR user_code = '" + account.trim() + "'");
 
     if (result.recordset.length === 0) {
       req.flash('error_msg', 'Tài khoản hoặc mật khẩu không chính xác.');
